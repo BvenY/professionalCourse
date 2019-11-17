@@ -1,0 +1,198 @@
+# !/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Time   :  2018/10/27 13:45
+# Author :  Richard
+# File   :  channel_code.py
+
+import matplotlib.pyplot as plt
+from matplotlib.font_manager import FontProperties
+
+class ChannelCode():
+    def ami_code(self, code_source):
+        '''
+        消息代码中的0 传输码中的0
+        消息代码中的1 传输码中的+1、-1交替
+        例如:
+        消息代码:1 0 1 0 1 0 0 0 1 0 1 1 1
+        AMI码: +1 0 -1 0 +1 0 0 0 -1 0 +1 -1 +1
+        :param code_source:
+        :return:
+        '''
+        code_list = list(code_source)
+        code_list = [int(i) for i in code_list]
+        counter = 0
+        for i in range(len(code_list)):
+            if code_list[i] == 1:
+                counter += 1
+            if counter % 2 != 0:
+                code_list[i] *= -1
+        return code_list
+
+    def hdb3_code(self, code_source):
+        '''
+        算法：
+        1、第一次遍历编码组：
+            如果不是4连0：
+                源码是1时，暂时不变；
+            否则：
+                4连0的第一位变为B。
+                4连0的最后一位变为V
+        2、第二次遍历：
+            第一个B一般取0
+            如果两个取代节之间1的个数为偶：
+                此时B和1遵循的规则完全相同，可以直接记为1，即100V
+            否则为奇：
+                则一定是0，记为0，即000V。
+        3、第三次遍历：
+            第一个非0符一般取-1，之后，根据前一个非0符极性，V取同，1取反；
+        :param code_source:
+        :return:
+        '''
+        code_list = list(code_source)
+        # 转化为整数
+        code_list = [int(i) for i in code_list]
+        code_len = len(code_list)
+        mem_B = []
+        mem_V = []
+        index = 0
+        # 连0不超过3个时不变，有4个或以上连0时把每4个0换为取代节
+        while index+3 < code_len:
+            sum_code = sum(code_list[index:index+4])
+            if sum_code == 0:
+                code_list[index] = 1 # B
+                mem_B.append(index)
+                code_list[index+3] = 1 # V
+                mem_V.append(index+3)
+                index += 4
+            else:
+                index += 1
+            sum_code = 0
+
+        # 确定B是0还是±1
+        # 第一个B一般取0
+        mem_temp = []
+        code_list[mem_B[0]] = 0
+        # mem_temp.append(0)
+        for i in range(len(mem_V)-1):
+            if sum(code_list[mem_V[i]:mem_V[i+1]])%2 == 0:
+                    code_list[mem_B[i+1]] = 1  # B
+            else:
+                code_list[mem_B[i+1]] = 0 # 不变
+                mem_temp.append(i+1)
+
+        for i in mem_temp:
+            mem_B.remove(i)
+
+        # 统一确定极性
+        # 第一个非0符一般取-1
+        for i in range(code_len):
+            if code_list[i] != 0:
+                code_list[i] = -1
+                break
+        t = 0
+        i = 0
+        while i < code_len:
+            if code_list[i] != 0:
+                if t != 0:
+                    if i in mem_V:
+                        code_list[i] = t
+                    else:
+                        code_list[i] = -1 * t
+                t = code_list[i]
+            i += 1
+        return mem_B, mem_V, code_list
+
+    def format_hdb3_code(self, hdb3_code, mem_B, mem_V):
+        hdb3_code_copy = hdb3_code.copy()
+        for i in mem_B:
+            if hdb3_code_copy[i] == -1:
+                hdb3_code_copy[i] = '-B'
+            else:
+                hdb3_code_copy[i] = 'B'
+
+        for i in mem_V:
+            if hdb3_code_copy[i] == -1:
+                hdb3_code_copy[i] = '-V'
+            else:
+                hdb3_code_copy[i] = 'V'
+        return hdb3_code_copy
+
+    def cmi_code(self, code_source):
+        code_list = []
+        code_list_temp = list(code_source)
+        # 转化为整数
+        code_list_temp = [int(i) for i in code_list_temp]
+        code_len = len(code_list_temp)
+        count_one = 0
+        for i in range(code_len):
+            if code_list_temp[i] == 1:
+                count_one += 1
+                if count_one % 2 == 0:
+                    code_list.append(0)
+                    code_list.append(0)
+                else:
+                    code_list.append(1)
+                    code_list.append(1)
+            else:
+                code_list.append(0)
+                code_list.append(1)
+        return code_list
+
+def show_code(code_tuple, title):
+    font_set = FontProperties(fname=r"c:\windows\fonts\simsun.ttc")
+    for t in range(len(code_tuple)):
+        x = []
+        y = []
+        code_len = len(code_tuple[t])
+        for i in range(code_len):
+            x.append(i)
+            x.append(i)
+        x.remove(0)
+        x.append(code_len)
+        for i in code_tuple[t]:
+            list_i = []
+            list_i.append(i)
+            y.extend(list_i*2)
+        # print('pre_x', x)
+        # print('pre_y',y)
+        pos = 41*10+t+1
+        ax = plt.subplot(pos)
+        plt.title(title[t], fontproperties=font_set)
+        ax.spines['top'].set_color('none')
+        ax.spines['right'].set_color('none')
+        ax.xaxis.set_ticks_position('bottom')
+        ax.spines['bottom'].set_position(('data', 0))
+        plt.plot(x,y)
+        plt.xticks([])
+        plt.yticks([])
+        # if t == 3:
+        #     plt.xticks(range(0, code_len))
+        # else:
+        #     plt.xticks(range(0, code_len+1))
+        plt.yticks([-1, 0, 1])
+    plt.show()
+
+if __name__ == '__main__':
+    test_code = '10000100001100001'
+    # test_code = input('input code:')
+
+    source_code = [int(i) for i in test_code]
+
+    ChannelCoder = ChannelCode()
+    print('码源：', test_code)
+
+    ami_code = ChannelCoder.ami_code(test_code)
+    print('ami编码：', ami_code)
+
+    mem_B, mem_V, hdb3_code = ChannelCoder.hdb3_code(test_code)
+    code_list_3 = hdb3_code
+    print('hdb3编码：', hdb3_code)
+    print('hdb3_code_format', ChannelCoder.format_hdb3_code(hdb3_code, mem_B, mem_V))
+
+    cmi_code = ChannelCoder.cmi_code(test_code)
+    print('cmi编码：', cmi_code)
+
+    # 可视化
+    # print((code_list_1,code_list_2,code_list_3))
+    title = (u'码源', u'ami编码', u'hdb3编码', u'cmi编码')
+    show_code((source_code,ami_code,hdb3_code,cmi_code), title)

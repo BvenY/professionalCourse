@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HDB3编码</title>
+</head>
+<body>
+    请输入源码：<input type="text" name="code" id="code" oninput="hdb3_code()">
+    <br>HDB3码：<div id="result"></div>
+    <br>图像为:<div id="picture"></div>
+    <script type="text/javascript">
+    	//HDB3的编码
+        function hdb3_code() {
+            /*算法：
+            1、第一次遍历编码组：
+            如果不是4连0：
+            源码是1时，暂时不变；
+            否则：
+            4连0的第一位变为B。
+            4连0的最后一位变为V
+            2、第二次遍历：
+            第一个B一般取0
+                如果两个取代节之间1的个数为偶：
+                    此时B和1遵循的规则完全相同，可以直接记为1，即100V
+                否则为奇：
+                    则一定是0，记为0，即000V。
+            3、第三次遍历：
+            第一个非0符一般取 - 1，之后，根据前一个非0符极性，V取同，1取反；*/
+            //创建一个数组存源码
+            let code = document.getElementById('code').value;
+            let code_list = [];
+            //按位存入对应的值
+            for(let i = 0;i < code.length;i++){
+                code_list.push(code[i]);
+            }
+            code_list = code_list.map(Number);
+            let code_length = code_list.length;
+            //记录B和V的索引
+            let code_b = [];
+            let code_v = [];
+            //字符串的索引
+            let index = 0;
+            //开始第一次遍历，当0不超过连续3个的时候不改变，当有4个或者以上0的时候把4个0换为取代节
+            while(index + 3 < code_length){
+                let sum_code = 0;
+                //求连续四位的和
+                sum_code = sum_code + code_list[index] + code_list[index + 1] + code_list[index + 2] + code_list[index + 3];
+                console.log(sum_code);
+                //四连0的情况
+                if(sum_code === 0){
+                    code_list[index] = 1; //B
+                    code_b.push(index);
+                    code_list[index + 3] = 1; //V
+                    code_v.push(index + 3);
+                    index += 4;
+                }
+                //其他情况
+                else{
+                    index += 1;
+                }
+            }
+            //开始第二次遍历，第一个B先娶0，再判断两个取代节之间1的个数
+            code_list[code_b[0]] = 0;
+            //遍历
+            for(let i = 0; i < (code_v.length - 1);i++){
+                let sum_v = code_list[code_v[i]] + code_list[code_v[i + 1]];
+                //为偶数
+                if(sum_v % 2 === 0){
+                    code_list[code_b[i+1]] = 1; //变为+1或者-1
+                }
+                //为奇数
+                else{
+                    code_list[code_b[i+1]] = 0;
+                }
+            }
+            //开始第三次遍历 统一确定极性 第一个非0符号一般取1
+            //设置第一个为-1
+            for(let i = 0;i < code_length;i++){
+                if(code_list[i] !== 0){
+                    code_list[i] = 1;
+                }
+                break;
+            }
+            //t是指前面那个不为0的数
+            let t = 0;
+            let j = 0;
+            //循环遍历
+            while(j < code_length){
+                if(code_list[j] !== 0){
+                    if(t !== 0){
+                        //当是V时 取同
+                        if(code_v.indexOf(j) > 0){
+                            code_list[j] = t;
+                        }
+                        //不为0不为V 那就是1 取前面的反
+                        else{
+                            code_list[j] = -1 * t;
+                        }
+                    }
+                    t = code_list[j];
+                }
+                j += 1;
+            }
+            //结果输出
+            let result = '';
+            for(let i = 0;i < code_length;i++){
+                result += code_list.map(String)[i];
+            }
+            let resultData = document.getElementById('result');
+            resultData.innerHTML = result;
+            //图像输出
+            let pic = document.getElementById('picture');
+            pic.innerHTML = '';
+            for(let i = 0;i < code_length;i++){
+                if(code_list[i] === 1){
+                    pic.innerHTML += '<span style="text-decoration: overline">&nbsp;&nbsp;&nbsp;&nbsp;</span>'
+                }
+                else if(code_list[i] === 0){
+                    pic.innerHTML += '<span style="text-decoration: line-through">&nbsp;&nbsp;&nbsp;&nbsp;</span>'
+                }
+                else{
+                    pic.innerHTML += '<span style="text-decoration: underline">&nbsp;&nbsp;&nbsp;&nbsp;</span>'
+                }
+            }
+        }                                                 
+    </script>
+</body>
+</html>

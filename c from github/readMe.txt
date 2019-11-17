@@ -1,0 +1,2 @@
+Coder为信源编码，开发语言为Java，开发工具为NetBeans
+Communication-simulation为信道编码，开发语言为JavaScript,开发工具为IDEA，存在一些已知BUG

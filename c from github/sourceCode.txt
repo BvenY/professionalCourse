@@ -1,0 +1,196 @@
+# !/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Time   :  2018/10/19 16:55
+# Author :  Richard
+# File   :  sourceCode.py
+
+from math import log
+import re
+import copy
+
+class sourceCode():
+    def countProb(self, text):
+        if len(text) == 0:
+            print('输入不能为空！')
+            return 0
+        perWord_count = {}
+        perWord_prob = {}
+        word_list = re.split('[ */(),.!"?]', text)
+        for i in word_list:
+            if i == '':
+                word_list.remove(i)
+        word_set = set(word_list)
+        count = len(word_list)
+        # print('count:',count)
+        for key in word_set:
+            key_count = word_list.count(key)
+            perWord_count[key] = key_count
+            perWord_prob[key] = key_count/count
+        perWord_count = sorted(perWord_count.items(), key=lambda d: d[1], reverse=True)
+        perWord_prob = sorted(perWord_prob.items(), key=lambda d: d[1], reverse=True)
+        return count, perWord_count, perWord_prob
+
+    def shannongCode(self, perWord_prob):
+        '''
+        香农编码算法实现流程：
+            1、统计所给文章中不同的字的频率
+            2、将频率从大到小排序
+            3、确定码长Ki(整数)
+            4、为了编成唯一可译码，计算第i个消息的累加概率
+            5、将累加概率Pi变成二进制数。
+            6、取Pi二进制数的小数点后Ki位即为该消息符号的二进制码字
+        '''
+        ki = [(key, int(-1*log(value, 2))+1) for key,value in perWord_prob]
+        word_code = []
+        # print('ki:', ki)
+        sum_prob_i = []
+        perWord_prob_list = [i[1] for i in perWord_prob]
+        for i in range(0, len(perWord_prob_list)):
+            sum_prob_i.append((perWord_prob[i][0], sum(perWord_prob_list[0:i])))
+        # print(sum_prob_i)
+        for i in range(len(sum_prob_i)):
+            code_str = ''
+            tmp = sum_prob_i[i][1]
+            for j in range(ki[i][1]):
+                # 乘2取整法
+                tmp -= int(tmp)
+                tmp *= 2
+                code_str += str(int(tmp))
+            word_code.append((ki[i][0], code_str))
+        return ki, sum_prob_i, word_code
+
+    def quecksort_breif(self, a):
+        '''
+        NB的python思维实现
+        :param a:
+        :return:
+        '''
+        # 确定基条件
+        if len(a) < 2:
+            return a
+        else:
+            # 选择基准
+            povit = a[0]
+
+            # 确定基准的左边
+            less = [i for i in a[1:] if i[1] <= povit[1]]
+
+            # 确定基准的右边
+            greater = [i for i in a[1:] if i[1] > povit[1]]
+
+            # 递归调用
+            return  self.quecksort_breif(greater) + [povit] + self.quecksort_breif(less)
+
+    def read_haffman(self, haffman_tree, pos, haffman_code):
+        # haffman_code = []
+        per_code = ''
+        per_code += pos
+        if type(haffman_tree) is str:
+            # print('haffman_code', (haffman_tree, per_code))
+            haffman_code.append((haffman_tree, per_code))
+            return
+        self.read_haffman(haffman_tree[0], per_code+'0',haffman_code)
+        self.read_haffman(haffman_tree[1], per_code+'1',haffman_code)
+
+    def haffman_code(self, perWord_prob):
+        '''
+        (1) 将信源符号按概率递减顺序排列 ;
+        (2) 把两个最小的概率加起来 , 作为新符号的概率 ;
+        (3) 重复步骤 (1) 、 (2), 直到概率和达到 1 为止 ;
+        (4) 在每次合并消息时，将被合并的消息赋以1和0或0和1；
+        (5) 寻找从每个信源符号到概率为1处的路径，记录下路径上的1和0；
+        (6) 对每个符号写出"1"、"0"序列（从码数的根到终节点）。
+        :param perWord_prob:
+        :return:
+        '''
+        # perWord_prob_len = len(perWord_prob)
+        perWord_prob_cp = copy.deepcopy(perWord_prob)
+        perWord_prob_cp = [list(i) for i in perWord_prob_cp]
+        haffman_tree = [[0,1],0]
+        while haffman_tree[1]<1:
+            # print("**************************************")
+            # print(haffman_tree)
+            # print(perWord_prob_cp)
+            left_son = perWord_prob_cp.pop()
+            haffman_tree[0][0] = copy.deepcopy(left_son[0])
+            right_son = perWord_prob_cp.pop()
+            haffman_tree[0][1] = copy.deepcopy(right_son[0])
+            haffman_tree[1] = left_son[1]+right_son[1]
+            # print(haffman_tree)
+            haffman_tree_temp = copy.deepcopy(haffman_tree)
+            perWord_prob_cp.append(haffman_tree_temp)
+            perWord_prob_cp = self.quecksort_breif(perWord_prob_cp)
+
+        haffman_code = []
+        # print('test',haffman_tree[0])
+        haffman_tree = copy.deepcopy(list(haffman_tree[0]))
+        self.read_haffman(haffman_tree[0], '0', haffman_code)
+        self.read_haffman(haffman_tree[1], '1', haffman_code)
+        return haffman_code
+
+    def finuo_split(self, perWord_prob, center):
+        sum_prob = 0
+        perWord_prob_len = len(perWord_prob)
+        if perWord_prob_len < 2:
+            return [perWord_prob,perWord_prob]
+        for i in range(perWord_prob_len):
+            sum_prob += perWord_prob[i][1]
+            # print(sum_prob,center)
+            if sum_prob > center:
+                if (sum_prob - center) > abs(center - sum_prob - perWord_prob[i - 1][1]):
+                    return [perWord_prob[:i], perWord_prob[i:]]
+                else:
+                    return [perWord_prob[:i + 1], perWord_prob[i + 1:]]
+
+    def create_finuoTree(self, finuoTree, perWord_prob, pos='0', center=0.5):
+        per_code = ''
+        per_code += pos
+        if len(perWord_prob) == 1:
+            finuoTree.append((perWord_prob[0][0],pos))
+            return
+        if len(perWord_prob) == 0:
+            return
+        # print('********1',perWord_prob,center)
+        self.create_finuoTree(finuoTree, self.finuo_split(perWord_prob, center)[0], per_code+'0', center=center/2)
+        if len(perWord_prob) == 0:
+            return
+        # print('********2', perWord_prob, center)
+        self.create_finuoTree(finuoTree, self.finuo_split(perWord_prob, center)[1], per_code+'1', center=center/2)
+        # print('********3', perWord_prob, center)
+
+
+    def finuo_code(self, perWord_prob):
+        '''
+        1、将信源消息符号按其出现的概率大小依次排列;
+        2、将依次排列的信源符号按概率值分为两大组，
+            使两个组的概率之和近于相同，并对各组赋予一个二进制码元“0”和“1”。
+        3、将每一大组的信源符号进一步再分成两组，使划分
+            后的两个组的概率之和近于相同，并又赋予两个组一个二进制符号“0”和“1”。
+        4、如此重复，直至每个组只剩下一个信源符号为止。
+        5、信源符号所对应的码字即为费诺码。
+        :param perWord_prob:
+        :return:
+        '''
+        finuoTree = []
+        # print(self.finuo_split(perWord_prob,0.5))
+        self.create_finuoTree(finuoTree, perWord_prob)
+        return finuoTree
+
+
+if __name__ == '__main__':
+    test = "b b b b b b b c c c c c c a a a a a a a a a a a a a a a e e e e e d d d d d d"
+    # test = input("请输入你想要编码的文章或句子（只限英文）:")
+    SourceCoder = sourceCode()
+    (count,perWord_count,perWord_prob) = SourceCoder.countProb(test)
+    # print(count)
+    print("每个编码字段的个数：",perWord_count)
+    print("每个编码字段的频率：",perWord_prob)
+    print('')
+    ki, sum_prob_i, shannong_code = SourceCoder.shannongCode(perWord_prob)
+    print('香农编码: ', shannong_code)
+    print('')
+    haffman_code = SourceCoder.haffman_code(perWord_prob)
+    print('霍夫曼编码: ',haffman_code)
+    print('')
+    finuo_code = SourceCoder.finuo_code(perWord_prob)
+    print('菲诺编码:', finuo_code)
