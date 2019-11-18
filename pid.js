@@ -153,6 +153,7 @@
         ctx.lineTo(x, y - ay * 300);
         ctx.stroke();
 
+        // 递归调用
         setTimeout(update, 16);
     }
     update();
