@@ -106,6 +106,10 @@
 			}
 		}
 		else{
+			errorY = 0;
+			deltaY.value = 0;
+			errorX = 0;
+			deltaX.value = 0;
 			console.log(count);
 			count = 0;
 		}
